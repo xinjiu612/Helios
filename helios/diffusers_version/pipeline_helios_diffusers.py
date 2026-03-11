@@ -855,14 +855,14 @@ class HeliosPipeline(DiffusionPipeline, HeliosLoraLoaderMixin):
         image_latents: torch.Tensor | None = None,
         fake_image_latents: torch.Tensor | None = None,
         add_noise_to_image_latents: bool = True,
-        image_noise_sigma_min: float = 0.111,
-        image_noise_sigma_max: float = 0.135,
+        image_noise_sigma_min: float = 0.111, #0.111
+        image_noise_sigma_max: float = 0.135, #0.135
         # ------------ V2V ------------
         video: PipelineImageInput | None = None,
         video_latents: torch.Tensor | None = None,
         add_noise_to_video_latents: bool = True,
-        video_noise_sigma_min: float = 0.111,
-        video_noise_sigma_max: float = 0.135,
+        video_noise_sigma_min: float = 0.222,
+        video_noise_sigma_max: float = 0.270,
         # ------------ Interactive ------------
         use_interpolate_prompt: bool = False,
         interpolate_time_list: list = [7, 7, 7],

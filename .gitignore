@@ -18,6 +18,7 @@
 *.pdf
 *.whl
 *.txt.gz
+images/
 !.gitignore
 !requirements.txt
 .DS_Store

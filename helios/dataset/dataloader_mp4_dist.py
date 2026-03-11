@@ -57,9 +57,9 @@ length_bucket_options = {
         81,
         61,
         41,
-        21,
+        33,
     ],
-    2: [193, 177, 161, 156, 145, 133, 129, 121, 113, 109, 97, 85, 81, 73, 65, 61, 49, 37, 25],
+    2: [193, 177, 161, 156, 145, 133, 129, 121, 113, 109, 97, 85, 81, 73, 65, 61, 49, 37, 33],
 }
 
 
@@ -274,7 +274,7 @@ class BucketedFeatureDataset(Dataset):
                 if num_frame < self.single_num_frame:
                     continue
             else:
-                if num_frame < 121:
+                if num_frame < 33:
                     continue
 
             uttid = os.path.basename(video_file).replace(".mp4", "") + f"_{cut_start_frame}-{cut_end_frame}"

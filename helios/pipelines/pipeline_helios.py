@@ -886,8 +886,8 @@ class HeliosPipeline(DiffusionPipeline, WanLoraLoaderMixin):
         image_latents: Optional[torch.Tensor] = None,
         fake_image_latents: Optional[torch.Tensor] = None,
         add_noise_to_image_latents: bool = True,
-        image_noise_sigma_min: float = 0.111,
-        image_noise_sigma_max: float = 0.135,
+        image_noise_sigma_min: float = 0.111, 
+        image_noise_sigma_max: float = 0.135, 
         # ------------ V2V ------------
         video: Optional[PipelineImageInput] = None,
         video_latents: Optional[torch.Tensor] = None,
