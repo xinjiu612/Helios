@@ -855,8 +855,8 @@ class HeliosPipeline(DiffusionPipeline, HeliosLoraLoaderMixin):
         image_latents: torch.Tensor | None = None,
         fake_image_latents: torch.Tensor | None = None,
         add_noise_to_image_latents: bool = True,
-        image_noise_sigma_min: float = 0.111, #0.111
-        image_noise_sigma_max: float = 0.135, #0.135
+        image_noise_sigma_min: float = 0.2, #0.111
+        image_noise_sigma_max: float = 0.3, #0.135
         # ------------ V2V ------------
         video: PipelineImageInput | None = None,
         video_latents: torch.Tensor | None = None,

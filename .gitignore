@@ -16,6 +16,8 @@
 *.pkl
 *.html
 *.pdf
+eval/
+prompt*
 *.whl
 *.txt.gz
 images/

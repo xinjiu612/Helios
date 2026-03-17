@@ -3,21 +3,21 @@
 #     --enable_parallelism \
 #     --cp_backend "ulysses" \   #  ["ring", "ulysses", "unified", "ulysses_anything"]
 
-export PYTHONPATH=$PWD:$PYTHONPATH
+    export PYTHONPATH=$PWD:$PYTHONPATH
     CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node 4 --master_port 29505 infer_helios_batch_copy.py \
         --base_model_path "/beijing-c/models/BestWishYSH/Helios-Base" \
         --transformer_path "/beijing-c/models/BestWishYSH/Helios-Base" \
         --sample_type "t2v" \
-        --num_frames 144 \
-        --guidance_scale 5.0 \
-        --fps 24 \
-        --prompt_txt_path "./prompts11.txt" \
-        --output_folder "./output_helios/helios-base-run3"
+        --num_frames 120 \
+        --guidance_scale 1.0 \
+        --is_enable_stage2 \
+        --pyramid_num_inference_steps_list 2 2 2 \
+        --is_amplify_first_chunk \
+        --prompt_txt_path "./prompts10.txt" \
+        --output_folder "./output_helios/helios-distilled-run10"
 
 
     # --enable_low_vram_mode \
     # --group_offloading_type "leaf_level" \  # ["leaf_level", "block_level"]
     # --num_blocks_per_group
-    # --use_cfg_zero_star \
-    # --use_zero_init \
-    # --zero_steps 1 \
+    # --pyramid_num_inference_steps_list 1 1 1 \

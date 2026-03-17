@@ -11,6 +11,7 @@ import logging
 import math
 import random
 import shutil
+from contextlib import contextmanager, nullcontext
 from datetime import timedelta
 from pathlib import Path
 
@@ -18,6 +19,7 @@ import numpy as np
 import torch
 import torch.distributed.checkpoint as dcp
 import transformers
+from transformers.integrations import deepspeed as transformers_deepspeed
 from accelerate import Accelerator, DistributedType
 from accelerate.logging import get_logger
 from accelerate.utils import (
@@ -74,6 +76,7 @@ from transformers import (
     UMT5EncoderModel,
 )
 
+from diffusers.models import modeling_utils as diffusers_modeling_utils
 import diffusers
 from diffusers import (
     AutoencoderKLWan,
@@ -253,6 +256,47 @@ def main(args):
     elif accelerator.mixed_precision == "bf16":
         weight_dtype = torch.bfloat16
 
+    is_zero3_deepspeed = (
+        accelerator.distributed_type == DistributedType.DEEPSPEED
+        and accelerator.state.deepspeed_plugin is not None
+        and accelerator.state.deepspeed_plugin.deepspeed_config.get("zero_optimization", {}).get("stage") == 3
+    )
+    pretrained_device_kwargs = {} if is_zero3_deepspeed else {"device_map": accelerator.device}
+
+    @contextmanager
+    def zero3_inference_load_context():
+        if not is_zero3_deepspeed:
+            yield
+            return
+
+        original_is_zero3_enabled = transformers_deepspeed.is_deepspeed_zero3_enabled
+        original_zero3_init_context_manager = None
+        original_parallel_loading = os.environ.get("HF_ENABLE_PARALLEL_LOADING")
+        original_diffusers_parallel_loading = diffusers_modeling_utils.HF_ENABLE_PARALLEL_LOADING
+        try:
+            transformers_deepspeed.is_deepspeed_zero3_enabled = lambda: False
+            if accelerator.state.deepspeed_plugin is not None:
+                original_zero3_init_context_manager = accelerator.state.deepspeed_plugin.zero3_init_context_manager
+                accelerator.state.deepspeed_plugin.zero3_init_context_manager = lambda: nullcontext()
+            os.environ["HF_ENABLE_PARALLEL_LOADING"] = "no"
+            diffusers_modeling_utils.HF_ENABLE_PARALLEL_LOADING = False
+            yield
+        finally:
+            transformers_deepspeed.is_deepspeed_zero3_enabled = original_is_zero3_enabled
+            if original_zero3_init_context_manager is not None:
+                accelerator.state.deepspeed_plugin.zero3_init_context_manager = original_zero3_init_context_manager
+            if original_parallel_loading is None:
+                os.environ.pop("HF_ENABLE_PARALLEL_LOADING", None)
+            else:
+                os.environ["HF_ENABLE_PARALLEL_LOADING"] = original_parallel_loading
+            diffusers_modeling_utils.HF_ENABLE_PARALLEL_LOADING = original_diffusers_parallel_loading
+
+    def load_pretrained_component(load_fn, *load_args, **load_kwargs):
+        if is_zero3_deepspeed:
+            load_kwargs.setdefault("low_cpu_mem_usage", False)
+        with zero3_inference_load_context():
+            return load_fn(*load_args, **load_kwargs)
+
     # Load scheduler and models
     if args.training_config.is_enable_stage2:
         noise_scheduler = HeliosScheduler(
@@ -279,35 +323,41 @@ def main(args):
         else:
             critic_noise_scheduler = FlowMatchEulerDiscreteScheduler(num_train_timesteps=1000)
 
-    vae = AutoencoderKLWan.from_pretrained(
+    vae = load_pretrained_component(
+        AutoencoderKLWan.from_pretrained,
         args.model_config.pretrained_model_name_or_path,
         subfolder="vae",
         revision=args.model_config.revision,
         variant=args.model_config.variant,
         torch_dtype=torch.float32,
-        device_map=accelerator.device,
+        **pretrained_device_kwargs,
     )
     if args.model_config.enable_slicing:
         vae.enable_slicing()
     if args.model_config.enable_tiling:
         vae.enable_tiling()
 
-    text_encoder = UMT5EncoderModel.from_pretrained(
-        args.model_config.pretrained_model_name_or_path,
-        subfolder="text_encoder",
-        revision=args.model_config.revision,
-        variant=args.model_config.variant,
-        dtype=weight_dtype,
-        device_map=accelerator.device,
-    )
-    # For negative prompt
-    with torch.no_grad():
-        negative_prompt_embeds, _ = encode_prompt(
-            tokenizer=tokenizer,
-            text_encoder=text_encoder,
-            prompt=args.data_config.negative_prompt,
-            device=accelerator.device,
+    text_encoder = None
+    negative_prompt_embeds = None
+    if args.training_config.is_train_dmd:
+        text_encoder = load_pretrained_component(
+            UMT5EncoderModel.from_pretrained,
+            args.model_config.pretrained_model_name_or_path,
+            subfolder="text_encoder",
+            revision=args.model_config.revision,
+            variant=args.model_config.variant,
+            torch_dtype=weight_dtype,
+            **pretrained_device_kwargs,
         )
+        text_encoder.to(accelerator.device, non_blocking=True)
+        # For negative prompt
+        with torch.no_grad():
+            negative_prompt_embeds, _ = encode_prompt(
+                tokenizer=tokenizer,
+                text_encoder=text_encoder,
+                prompt=args.data_config.negative_prompt,
+                device=accelerator.device,
+            )
 
     transformer_additional_kwargs = {
         "has_multi_term_memory_patch": args.training_config.has_multi_term_memory_patch,
@@ -359,9 +409,11 @@ def main(args):
     # We only train the additional adapter LoRA layers
     transformer.requires_grad_(False)
     vae.requires_grad_(False)
-    text_encoder.requires_grad_(False)
+    if text_encoder is not None:
+        text_encoder.requires_grad_(False)
     vae.eval()
-    text_encoder.eval()
+    if text_encoder is not None:
+        text_encoder.eval()
     if args.training_config.is_train_dmd:
         real_score_model.requires_grad_(False)
 
@@ -507,7 +559,8 @@ def main(args):
         "cpu" if (args.data_config.use_stage1_dataset or args.data_config.use_stage3_dataset) else accelerator.device
     )
     vae.to(target_device)
-    text_encoder.to(target_device)
+    if text_encoder is not None:
+        text_encoder.to(target_device)
     if args.training_config.is_use_reward_model:
         reward_model.model.to(target_device)
     free_memory()
@@ -555,7 +608,11 @@ def main(args):
         else:
             raise ValueError("xformers is not available. Make sure it is installed correctly")
 
-    if args.training_config.gradient_checkpointing:
+    if args.training_config.gradient_checkpointing and is_zero3_deepspeed:
+        logger.warning("Disabling gradient checkpointing because it is unstable with DeepSpeed ZeRO-3 in this training path.")
+
+    effective_gradient_checkpointing = args.training_config.gradient_checkpointing and not is_zero3_deepspeed
+    if effective_gradient_checkpointing:
         transformer.enable_gradient_checkpointing()
         if args.training_config.is_train_dmd:
             real_score_model.enable_gradient_checkpointing()
@@ -1906,13 +1963,14 @@ def main(args):
                             vram_manager.move_to_cpu(real_score_model)
 
                         if vae is None:
-                            vae = AutoencoderKLWan.from_pretrained(
+                            vae = load_pretrained_component(
+                                AutoencoderKLWan.from_pretrained,
                                 args.model_config.pretrained_model_name_or_path,
                                 subfolder="vae",
                                 revision=args.model_config.revision,
                                 variant=args.model_config.variant,
                                 torch_dtype=torch.float32,
-                                device_map=accelerator.device,
+                                **pretrained_device_kwargs,
                             )
                             if args.model_config.enable_slicing:
                                 vae.enable_slicing()
@@ -2117,13 +2175,14 @@ def main(args):
                     if accelerator.is_main_process:
                         with torch.no_grad():
                             if vae is None:
-                                vae = AutoencoderKLWan.from_pretrained(
+                                vae = load_pretrained_component(
+                                    AutoencoderKLWan.from_pretrained,
                                     args.model_config.pretrained_model_name_or_path,
                                     subfolder="vae",
                                     revision=args.model_config.revision,
                                     variant=args.model_config.variant,
                                     torch_dtype=torch.float32,
-                                    device_map=accelerator.device,
+                                    **pretrained_device_kwargs,
                                 )
                                 if args.model_config.enable_slicing:
                                     vae.enable_slicing()
@@ -2131,13 +2190,14 @@ def main(args):
                                     vae.enable_tiling()
 
                             if text_encoder is None:
-                                text_encoder = UMT5EncoderModel.from_pretrained(
+                                text_encoder = load_pretrained_component(
+                                    UMT5EncoderModel.from_pretrained,
                                     args.model_config.pretrained_model_name_or_path,
                                     subfolder="text_encoder",
                                     revision=args.model_config.revision,
                                     variant=args.model_config.variant,
-                                    dtype=weight_dtype,
-                                    device_map=accelerator.device,
+                                    torch_dtype=weight_dtype,
+                                    **pretrained_device_kwargs,
                                 )
 
                             if args.data_config.use_stage1_dataset or args.training_config.offload:
@@ -2342,13 +2402,14 @@ def main(args):
         if args.validation_config.validation_prompts is not None:
             with torch.no_grad():
                 if vae is None:
-                    vae = AutoencoderKLWan.from_pretrained(
+                    vae = load_pretrained_component(
+                        AutoencoderKLWan.from_pretrained,
                         args.model_config.pretrained_model_name_or_path,
                         subfolder="vae",
                         revision=args.model_config.revision,
                         variant=args.model_config.variant,
                         torch_dtype=torch.float32,
-                        device_map=accelerator.device,
+                        **pretrained_device_kwargs,
                     )
                     if args.model_config.enable_slicing:
                         vae.enable_slicing()
@@ -2356,13 +2417,14 @@ def main(args):
                         vae.enable_tiling()
 
                 if text_encoder is None:
-                    text_encoder = UMT5EncoderModel.from_pretrained(
+                    text_encoder = load_pretrained_component(
+                        UMT5EncoderModel.from_pretrained,
                         args.model_config.pretrained_model_name_or_path,
                         subfolder="text_encoder",
                         revision=args.model_config.revision,
                         variant=args.model_config.variant,
-                        dtype=weight_dtype,
-                        device_map=accelerator.device,
+                        torch_dtype=weight_dtype,
+                        **pretrained_device_kwargs,
                     )
 
                 if args.data_config.use_stage1_dataset:

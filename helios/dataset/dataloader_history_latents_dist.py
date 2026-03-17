@@ -96,8 +96,8 @@ class BucketedFeatureDataset(Dataset):
             height = int(parts[-2])
             width = int(parts[-1].replace(".pt", ""))
 
-            # keep length >= 121
-            if num_frame < 121:
+            # keep length >= 33
+            if num_frame < 33:
                 continue
 
             # keep resolution

@@ -90,7 +90,6 @@ from diffusers.utils import (
     check_min_version,
     convert_unet_state_dict_to_peft,
     export_to_video,
-    load_image,
     is_wandb_available,
 )
 from diffusers.utils.import_utils import is_torch_npu_available, is_xformers_available
@@ -188,12 +187,7 @@ def main(args):
             with open(config_path, "r") as f:
                 existing_conf = json.load(f)
 
-            ignore_keys = {
-                "training_config.local_rank",
-                # Allow changing validation settings between resumed runs.
-                "validation_config.validation_prompts",
-                "validation_config.validation_images",
-            }
+            ignore_keys = {"training_config.local_rank"}
             mismatches = compare_configs(existing_conf, current_conf, ignore_keys=ignore_keys)
             if mismatches:
                 print("Config mismatches found:")
@@ -2158,8 +2152,7 @@ def main(args):
 
                             all_videos = []
                             all_prompts = []
-                            validation_images = args.validation_config.validation_images or []
-                            for prompt_idx, validation_prompt in enumerate(args.validation_config.validation_prompts):
+                            for validation_prompt in args.validation_config.validation_prompts:
                                 pipeline_args = {
                                     "prompt": args.data_config.id_token + validation_prompt,
                                     "negative_prompt": "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards",
@@ -2183,17 +2176,6 @@ def main(args):
                                     "use_dmd": args.training_config.is_train_dmd,
                                     "is_amplify_first_chunk": args.training_config.is_amplify_first_chunk,
                                 }
-                                if validation_images:
-                                    image_path = validation_images[prompt_idx % len(validation_images)]
-                                    if image_path:
-                                        validation_image = load_image(image_path).convert("RGB")
-                                        validation_image = validation_image.resize(
-                                            (
-                                                args.validation_config.validation_width,
-                                                args.validation_config.validation_height,
-                                            )
-                                        )
-                                        pipeline_args["image"] = validation_image
 
                                 videos, prompt = log_validation(
                                     pipe=pipe,
@@ -2383,8 +2365,7 @@ def main(args):
 
                 all_videos = []
                 all_prompts = []
-                validation_images = args.validation_config.validation_images or []
-                for prompt_idx, validation_prompt in enumerate(args.validation_config.validation_prompts):
+                for validation_prompt in args.validation_config.validation_prompts:
                     pipeline_args = {
                         "prompt": args.data_config.id_token + validation_prompt,
                         "negative_prompt": "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards",
@@ -2408,17 +2389,6 @@ def main(args):
                         "use_dmd": args.training_config.is_train_dmd,
                         "is_amplify_first_chunk": args.training_config.is_amplify_first_chunk,
                     }
-                    if validation_images:
-                        image_path = validation_images[prompt_idx % len(validation_images)]
-                        if image_path:
-                            validation_image = load_image(image_path).convert("RGB")
-                            validation_image = validation_image.resize(
-                                (
-                                    args.validation_config.validation_width,
-                                    args.validation_config.validation_height,
-                                )
-                            )
-                            pipeline_args["image"] = validation_image
                     videos, prompt = log_validation(
                         pipe=pipe,
                         args=args,

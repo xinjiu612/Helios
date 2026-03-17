@@ -1,20 +1,22 @@
 
 export PYTHONPATH=$PWD:$PYTHONPATH
-CUDA_VISIBLE_DEVICES=4,5,6,7 torchrun --nproc_per_node 4 --master_port 29505 infer_helios_batch.py \
+CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node 1 --master_port 29506 infer_helios_batch.py \
     --enable_parallelism \
     --cp_backend "ulysses" \
     --base_model_path "/beijing-c/models/BestWishYSH/Helios-Base" \
     --transformer_path "/beijing-c/models/BestWishYSH/Helios-Base" \
     --sample_type "i2v" \
-    --num_frames 321 \
+    --num_frames 99 \
+    --num_inference_steps 60 \
     --fps 24 \
-    --task_dir images/task_design \
-    --guidance_scale 5.0 \
+    --task_dir "output_helios/helios-base/test" \
+    --guidance_scale 6.0 \
+    --image_noise_sigma_min 0.20 \
+    --image_noise_sigma_max 0.30 \
     --is_skip_first_chunk \
     --enable_compile \
-    --output_folder "./output_helios/helios-base/task_design_skip_first_chunk"
-
-
+    --output_folder "./output_helios/helios-base"
+    
     # --use_cfg_zero_star \
     # --use_zero_init \
     # --zero_steps 1 \
