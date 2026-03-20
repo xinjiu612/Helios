@@ -6,12 +6,12 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node 4 --master_port 29508 inf
     --base_model_path "/beijing-c/models/BestWishYSH/Helios-Base" \
     --transformer_path "ablation_stage_1_post/merge/step_8000" \
     --sample_type "i2v" \
-    --num_frames 66 \
+    --num_frames 165 \
     --fps 24 \
-    --task_dir "eval/intergs/samples/captions_frames" \
+    --task_dir "eval/ours/task_design" \
     --guidance_scale 5.0 \
     --enable_compile \
-    --output_folder "eval/intergs/samples/output_8000"
+    --output_folder "eval/ours/output_8000"
     
     # --use_cfg_zero_star \
     # --use_zero_init \

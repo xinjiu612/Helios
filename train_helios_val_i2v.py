@@ -1001,13 +1001,14 @@ def main(args):
                     transformer_additional_kwargs=transformer_additional_kwargs,
                 )
                 accelerator.wait_for_everyone()
-
                 transformer_cpu = None
                 del transformer_cpu
+                free_memory()
 
                 if args.training_config.is_train_dmd and args.training_config.dmd_is_low_vram_mode:
-                    vram_manager.move_to_gpu(transformer, accelerator.device)
-                    vram_manager.move_to_gpu(real_score_model, accelerator.device)
+                    # Keep both models on CPU after EMA resume. The low-VRAM generator/critic
+                    # paths will move the required model back to GPU right before it is used.
+                    accelerator.print("EMA resume complete; keeping transformer and real_score_model on CPU for low-VRAM mode.")
     else:
         initial_global_step = 0
 
@@ -1053,13 +1054,14 @@ def main(args):
             update_after_step=args.training_config.ema_start_step,
         )
         accelerator.wait_for_everyone()
-
         transformer_cpu = None
         del transformer_cpu
+        free_memory()
 
         if args.training_config.is_train_dmd and args.training_config.dmd_is_low_vram_mode:
-            vram_manager.move_to_gpu(transformer, accelerator.device)
-            vram_manager.move_to_gpu(real_score_model, accelerator.device)
+            # Avoid an immediate post-EMA peak by leaving models offloaded until the
+            # training step explicitly swaps them back in.
+            accelerator.print("EMA init complete; keeping transformer and real_score_model on CPU for low-VRAM mode.")
         else:
             transformer.to(accelerator.device, non_blocking=False)
 
@@ -1784,7 +1786,7 @@ def main(args):
                     )
                     if not (
                         USE_GAN
-                        and (args.training_config.is_gan_aprox_grad or args.training_config.is_gan_low_vram_mode)
+                        and (getattr(args.training_config, "is_gan_aprox_grad", False) or args.training_config.is_gan_low_vram_mode)
                     ):
                         critic_accelerator.backward(critic_loss)
 
