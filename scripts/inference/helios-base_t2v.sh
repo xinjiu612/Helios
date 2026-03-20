@@ -9,10 +9,10 @@ export PYTHONPATH=$PWD:$PYTHONPATH
         --transformer_path "/beijing-c/models/BestWishYSH/Helios-Base" \
         --sample_type "t2v" \
         --num_frames 144 \
-        --guidance_scale 5.0 \
+        --guidance_scale 3.0 \
         --fps 24 \
-        --prompt_txt_path "./prompts11.txt" \
-        --output_folder "./output_helios/helios-base-run3"
+        --prompt_txt_path "./prompts14.txt" \
+        --output_folder "./output_helios/helios-base-run7"
 
 
     # --enable_low_vram_mode \

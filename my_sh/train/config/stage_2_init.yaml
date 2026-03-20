@@ -1,11 +1,11 @@
-output_dir: ablation_stage_2_post
+output_dir: ablation_stage_2_init
 logging_dir: logs
-seed: 46
+seed: 45
 
 
 report_to:
   tracker_name: Wan-Train
-  wandb_name: ablation_stage_2_post
+  wandb_name: ablation_stage_2_init
   report_to: wandb
 
 
@@ -31,8 +31,7 @@ data_config:
 model_config:
   # ---- Path ----
   pretrained_model_name_or_path: "BestWishYsh/Helios-Base"
-  transformer_model_name_or_path: "BestWishYsh/Helios-Mid"
-  subfolder: "transformer_init"
+  transformer_model_name_or_path: "BestWishYsh/Helios-Base"
   load_checkpoints_custom: false
   # load_model_path:
   load_dcp: false
@@ -97,9 +96,9 @@ training_config:
   resume_from_checkpoint: "latest"
   save_checkpoints_custom: false
   # ---- Optimizer ----
-  learning_rate: 3e-5
+  learning_rate: 1e-4
   lr_scheduler: "constant_with_warmup"
-  lr_warmup_steps: 500
+  lr_warmup_steps: 1000
   optimizer: "adamw"
   adam_beta1: 0.9
   adam_beta2: 0.999
@@ -171,10 +170,10 @@ training_config:
   history_scale_mode: "per_head"
   # 
   is_train_full_patch_embedding: false
-  is_train_lora_patch_embedding: true
+  is_train_lora_patch_embedding: false
   has_multi_term_memory_patch: true
-  is_train_full_multi_term_memory_patchg: false
-  is_train_lora_multi_term_memory_patchg: true
+  is_train_full_clean_patch_embedding: false
+  is_train_lora_clean_patch_embedding: false
   zero_history_timestep: true
   guidance_cross_attn: true
   restrict_self_attn: false
@@ -194,6 +193,6 @@ training_config:
     - 1
   stage2_sample_ratios: 
     - 1
-    - 1
+    - 2
     - 1
   efficient_sample: false

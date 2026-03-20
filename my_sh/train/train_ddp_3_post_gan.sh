@@ -6,8 +6,8 @@ export WANDB_API_KEY="wandb_v1_VB3pukojh6gCwhoMbe2g9ExvbdU_KD64OzlBx6GMssq0eAT3t
 export TOKENIZERS_PARALLELISM=true
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 # Optional GPU selection:
-#   GPU_IDS=0,1,2,3 bash my_sh/train/train_deepspeed.sh
-#   CUDA_VISIBLE_DEVICES=0,1,2,3 bash my_sh/train/train_deepspeed.sh
+#   GPU_IDS=0,1,2,3 bash my_sh/train/train_ddp.sh
+#   CUDA_VISIBLE_DEVICES=0,1,2,3 bash my_sh/train/train_ddp.sh
 if [ ! -z "${GPU_IDS}" ]; then
     export CUDA_VISIBLE_DEVICES=${GPU_IDS}
 fi
@@ -107,15 +107,15 @@ echo -e "\033[31mMACHINE_RANK: ${MACHINE_RANK}\033[0m"
 echo -e "\033[31mNUM_PROCESSES_PER_MACHINE: ${NUM_PROCESSES_PER_MACHINE}\033[0m"
 echo -e "\033[31mACCELERATE_ARGS: ${ACCELERATE_ARGS}\033[0m"
 
-# accelerate launch \
-#     $ACCELERATE_ARGS \
-#     train_helios.py \
-#     --config scripts/training/configs/stage_3_post.yaml \
-#     2>&1 | tee ./train.log
-
 accelerate launch \
     $ACCELERATE_ARGS \
-    --config_file scripts/accelerate_configs/multi_node_example_zero2.yaml \
     train_helios_val_i2v.py \
-    --config scripts/training/configs/stage_2_post_i2v.yaml \
+    --config /beijing-c/workspace/hxj/videomodel/Helios_new/Helios/my_sh/train/config/stage_3_post_gan_version.yaml \
     2>&1 | tee ./train.log
+
+# accelerate launch \
+#     $ACCELERATE_ARGS \
+#     --config_file scripts/accelerate_configs/multi_node_example_zero2.yaml \
+#     train_helios.py \
+#     --config scripts/training/configs/stage_1_init.yaml \
+#     2>&1 | tee ./train.log

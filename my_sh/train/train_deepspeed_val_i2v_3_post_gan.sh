@@ -117,5 +117,5 @@ accelerate launch \
     $ACCELERATE_ARGS \
     --config_file scripts/accelerate_configs/multi_node_example_zero2.yaml \
     train_helios_val_i2v.py \
-    --config scripts/training/configs/stage_2_post_i2v.yaml \
+    --config my_sh/train/config/stage_3_post_gan_version.yaml \
     2>&1 | tee ./train.log

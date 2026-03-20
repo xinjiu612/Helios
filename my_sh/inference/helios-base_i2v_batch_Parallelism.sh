@@ -3,20 +3,19 @@
 #     --enable_parallelism \
 #     --cp_backend "ulysses" \   #  ["ring", "ulysses", "unified", "ulysses_anything"]
 
-CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node 4 --master_port 29505 infer_helios.py \
+CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node 4 --master_port 29507 infer_helios.py \
     --base_model_path "/beijing-c/models/BestWishYSH/Helios-Base" \
-    --transformer_path "/beijing-c/models/BestWishYSH/Helios-Base" \
+    --transformer_path "ablation_stage_1_post_10000_intergs/merge" \
     --enable_parallelism \
     --cp_backend "ulysses" \
     --sample_type "i2v" \
-    --num_frames 393 \
+    --num_frames 99 \
     --fps 24 \
-    --image_path "output_helios/helios-base/test/fast_move.png" \
-    --prompt "Cinematic fast truck-in and dolly-in toward the left-side tree in a modern office scene. The first three seconds must show continuously increasing speed toward the tree, with strong depth compression and obvious background streaking (white curtains, desks, lighting rails, equipment racks). At the 3-second boundary, the camera brakes instantly and locks in front of the tree. For the next two seconds, keep a rigid lock-off composition and stable details in leaves, trunk, drapes, and floor cables." \
+    --image_path "/beijing-c/datasets/hxj_video_model/InteriorGS/sampled_data/validation/first_frames/0001_839920_1_2_2-3.jpg" \
+    --prompt "The camera glides forward across a smooth, tiled floor within a narrow kitchen corridor lined with cabinetry. It approaches a large, rectangular stainless steel refrigerator standing against the far wall, positioned between a countertop and a doorway. The camera moves directly toward the appliance, passes closely by its right side, and continues its trajectory into the adjacent space." \
     --guidance_scale 5.0 \
     --is_skip_first_chunk \
-    --enable_compile \
-    --output_folder "./output_helios/helios-base"
+    --output_folder "./output_helios/helios-base/test_2"
 
 
     # --enable_low_vram_mode \
