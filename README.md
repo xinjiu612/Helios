@@ -19,9 +19,8 @@
 
 [![Ascend](https://img.shields.io/badge/Inference-Ascend--NPU-red)](https://www.hiascend.com/)
 [![Diffusers](https://img.shields.io/badge/Inference-Diffusers-blueviolet)](https://github.com/huggingface/diffusers/pull/13208)
-[![vLLM-Omni](https://img.shields.io/badge/Backend-vLLM--Omni-orange)](https://github.com/vllm-project/vllm-omni/pull/1604)
 [![SGLang Diffusion](https://img.shields.io/badge/Backend-SGLang--Diffusion-yellow)](https://github.com/sgl-project/sglang/pull/19782)
-
+[![vLLM-Omni](https://img.shields.io/badge/Backend-vLLM--Omni-orange)](https://github.com/vllm-project/vllm-omni/pull/1604)
 
 
 
@@ -58,6 +57,9 @@ or you can click <a href="https://github.com/PKU-YuanGroup/Helios-Page/blob/main
 
 ## 📣 Latest News!!
 
+* `[2026.03.20]` 🚀 Helios now supports [Ahead-of-Time Compilation (AOTI)](https://huggingface.co/blog/zerogpu-aoti) on Spaces, with special thanks to the HuggingFace Team, especially [@Charles](https://github.com/cbensimon) and [@Sayak Paul](https://github.com/sayakpaul) for their great support! Please refer to [this Space](https://huggingface.co/spaces/BestWishYsh/Helios-14B-RealTime-AOTI) for a usage example.
+* `[2026.03.20]` 🔧 Based on [issue #38](https://github.com/PKU-YuanGroup/Helios/issues/38), we've identified several ways to further improve Helios's performance, such as fixing the i2v train-inference inconsistency and fully enabling Easy Anti-Drifting. Please refer to [commits](https://github.com/PKU-YuanGroup/Helios/commits/main/) and [correct.yaml](./scripts/training/configs/correct.yaml) for details.
+* `[2026.03.12]` ⚡️ Please note that real-time generation performance depends not only on the GPU, but also on the CPU, memory, CUDA driver version, etc. As [tested by a user](https://github.com/PKU-YuanGroup/Helios/issues/3#issuecomment-4034710182) on better hardware with single H100, Helios can reach up to **20.89 FPS**!
 * `[2026.03.08]` 👋 Helios now fully supports [Group Offloading](#-group-offloading-to-save-vram) and [Context Parallelism](#-context-parallelism-on-multiple-gpus)! These features significantly optimize VRAM (**only ~6GB**) usage and enable inference across multiple GPUs with *Ulysses Attention*, *Ring Attention*, *Unified Attention*, and *Ulysses Anything Attention*.
 * `[2026.03.06]` 🚀 [Cache-DiT](https://github.com/vipshop/cache-dit/pull/834) now supports Helios, it offers Fully Cache Acceleration and Parallelism support for Helios! Special thanks to the Cache-DiT Team for their amazing work.
 * `[2026.03.06]` 🚀 We fix the Parallel Inference logits for Helios, and provide an example [here](#-parallel-inference-on-multiple-gpus). Thanks [Cache-DiT Team](https://github.com/vipshop/cache-dit/pull/836). 
@@ -65,8 +67,8 @@ or you can click <a href="https://github.com/PKU-YuanGroup/Helios-Page/blob/main
 * `[2026.03.05]` 👋 We are excited to announce the release of the Helios [technical report](https://arxiv.org/abs/2603.04379) on arXiv. We welcome discussions and feedback!
 * `[2026.03.04]` 🚀 Day-0 support for [Ascend-NPU](https://www.hiascend.com)，with sincere gratitude to the Ascend Team for their support.
 * `[2026.03.04]` 🚀 Day-0 support for [Diffusers](https://github.com/huggingface/diffusers/pull/13208)，with special thanks to the HuggingFace Team for their support.
-* `[2026.03.04]` 🚀 Day-0 support for [vLLM-Omni](https://github.com/vllm-project/vllm-omni/pull/1604)，with heartfelt gratitude to the vLLM Team for their support.
 * `[2026.03.04]` 🚀 Day-0 support for [SGLang-Diffusion](https://github.com/sgl-project/sglang/pull/19782)，with huge thanks to the SGLang Team for their support.
+* `[2026.03.04]` 🚀 Day-0 support for [vLLM-Omni](https://github.com/vllm-project/vllm-omni/pull/1604)，with heartfelt gratitude to the vLLM Team for their support.
 * `[2026.03.04]` 🔥 We've released the training/inference code and weights of **Helios-Base**, **Helios-Mid** and **Helios-Distilled**.
 
 
@@ -76,8 +78,8 @@ If your work has improved **Helios** and you would like more people to see it, p
 
 * [Ascend-NPU](https://www.hiascend.com/): Developed by Huawei, this hardware is designed for efficient AI model training and inference, boosting performance in tasks like computer vision, natural language processing, and autonomous driving.
 * [Diffusers](https://github.com/huggingface/diffusers/pull/13208): A popular library designed for working with diffusion models and other generative models in deep learning. It supports easy integration and manipulation of a wide range of generative models.
-* [vLLM-Omni](https://github.com/vllm-project/vllm-omni/pull/1604): A fully disaggregated serving system for any-to-any models. vLLM-Omni breaks complex architectures into a stage-based graph, using a decoupled backend to maximize resource efficiency and throughput.
 * [SGLang-Diffusion](https://github.com/sgl-project/sglang/pull/19782): An inference framework for accelerated image and video generation using diffusion models. It provides an end-to-end unified pipeline with optimized kernels and an efficient scheduler loop.
+* [vLLM-Omni](https://github.com/vllm-project/vllm-omni/pull/1604): A fully disaggregated serving system for any-to-any models. vLLM-Omni breaks complex architectures into a stage-based graph, using a decoupled backend to maximize resource efficiency and throughput.
 * [Cache-DiT](https://github.com/vipshop/cache-dit/pull/834): A PyTorch-native and Flexible Inference Engine with Hybrid Cache Acceleration and Parallelism for DiTs. It built on top of the Diffusers library and now supports nearly ALL DiTs from Diffusers.
 
 ## ⚙️ Requirements and Installation
@@ -118,7 +120,7 @@ bash install.sh
 > 💡Note: 
 > * All three models share the same architecture, but Helios-Mid and Helios-Distilled use a more aggressive multi-scale sampling pipeline to achieve better efficiency.
 > * Helios-Mid is an intermediate checkpoint generated in the process of distilling Helios-Base into Helios-Distilled, and may not meet expected quality.
-> * For Image-to-Video or Video-to-Video, since training is based on Text-to-Video, these two functions may be slightly inferior to Text-to-Video. You may enable `is_skip_first_chunk` if you find the first few chunks are static.
+> * For Image-to-Video or Video-to-Video, since training is based on Text-to-Video, these two functions may be slightly inferior to Text-to-Video. You may enable `is_skip_first_chunk` if you find the first few chunks are static or imporve the value of `image_noise_sigma_min`, `image_noise_sigma_max`, `video_noise_sigma_min`, and `video_noise_sigma_max`.
 
 
 Download models using huggingface-cli:
@@ -126,15 +128,15 @@ Download models using huggingface-cli:
 pip install "huggingface_hub[cli]"
 huggingface-cli download BestWishYSH/Helios-Base --local-dir BestWishYSH/Helios-Base
 huggingface-cli download BestWishYSH/Helios-Mid --local-dir BestWishYSH/Helios-Mid
-huggingface-cli download BestWishYSH/Helios-Distilled --local-dir BestWishYSH/HeliosDistillede
+huggingface-cli download BestWishYSH/Helios-Distilled --local-dir BestWishYSH/Helios-Distilled
 ```
 
 Download models using modelscope-cli:
 ``` sh
 pip install modelscope
 modelscope download BestWishYSH/Helios-Base --local_dir BestWishYSH/Helios-Base
-modelscope download BestWishYSH/Helios-Mid --local-dir BestWishYSH/Helios-Mid
-modelscope download BestWishYSH/Helios-Distilled --local-dir BestWishYSH/HeliosDistillede
+modelscope download BestWishYSH/Helios-Mid --local_dir BestWishYSH/Helios-Mid
+modelscope download BestWishYSH/Helios-Distilled --local_dir BestWishYSH/Helios-Distilled
 ```
 
 ## 🚀 Inference

@@ -9,8 +9,15 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node 4 --master_port 29505 inf
     --base_model_path "/beijing-c/models/BestWishYSH/Helios-Distilled" \
     --transformer_path "/beijing-c/models/BestWishYSH/Helios-Distilled" \
     --sample_type "i2v" \
+<<<<<<< HEAD
     --image_path "output_helios/helios-base/test/fast_move.png" \
     --prompt "Cinematic fast truck-in and dolly-in toward the left-side tree in a modern office scene. The first three seconds must show continuously increasing speed toward the tree, with strong depth compression and obvious background streaking (white curtains, desks, lighting rails, equipment racks). At the 3-second boundary, the camera brakes instantly and locks in front of the tree. For the next two seconds, keep a rigid lock-off composition and stable details in leaves, trunk, drapes, and floor cables." \
+=======
+    --image_path "example/wave.jpg" \
+    --image_noise_sigma_min 0.111 \
+    --image_noise_sigma_max 0.135 \
+    --prompt "A towering emerald wave surges forward, its crest curling with raw power and energy. Sunlight glints off the translucent water, illuminating the intricate textures and deep green hues within the wave’s body. A thick spray erupts from the breaking crest, casting a misty veil that dances above the churning surface. As the perspective widens, the immense scale of the wave becomes apparent, revealing the restless expanse of the ocean stretching beyond. The scene captures the ocean’s untamed beauty and relentless force, with every droplet and ripple shimmering in the light. The dynamic motion and vivid colors evoke both awe and respect for nature’s might." \
+>>>>>>> upstream/main
     --num_frames 240 \
     --guidance_scale 1.0 \
     --is_enable_stage2 \
