@@ -153,31 +153,79 @@ class BucketedFeatureDataset(Dataset):
 
         return samples
 
-    def prepare_stage1_latent(self, vae_latent, idx, base_vae_latent=None, return_secondary=False):
-        self.is_keep_x0 = (True,)
+    @staticmethod
+    def _get_optional_feature_latent(feature_data, key):
+        if key in feature_data:
+            return feature_data[key]
+        if key.endswith("s"):
+            return feature_data.get(key[:-1])
+        return None
+
+    @staticmethod
+    def _normalize_condition_latent(latent):
+        if latent is None:
+            return None
+        if latent.ndim == 5:
+            if latent.shape[0] != 1:
+                raise ValueError(f"Expected a single-sample condition latent, got shape {tuple(latent.shape)}")
+            latent = latent.squeeze(0)
+        if latent.ndim == 3:
+            latent = latent.unsqueeze(1)
+        if latent.ndim != 4:
+            raise ValueError(f"Expected condition latent to have 4 dims [C, T, H, W], got {tuple(latent.shape)}")
+        return latent
+
+    def prepare_stage1_latent(
+        self,
+        vae_latent,
+        idx,
+        base_vae_latent=None,
+        image_latent=None,
+        fake_image_latent=None,
+        return_secondary=False,
+    ):
+        self.is_keep_x0 = True
         self.history_sizes = [16, 2, 1]
         self.num_rollout_sections = 9
 
         source_latent = base_vae_latent if base_vae_latent is not None else vae_latent
+        image_latent = self._normalize_condition_latent(image_latent)
+        fake_image_latent = self._normalize_condition_latent(fake_image_latent)
 
         x0_latent = None
         if self.is_keep_x0:
-            x0_latent = source_latent[0, :, :1, :, :].clone()
+            if image_latent is not None:
+                x0_latent = image_latent.clone()
+            else:
+                x0_latent = source_latent[0, :, :1, :, :].clone()
         total_sections = source_latent.shape[0]
         latent_window_size = source_latent.shape[2]
         history_window_size = sum(self.history_sizes)
         section_size = history_window_size + latent_window_size
 
         temp_source_latent = rearrange(source_latent, "b c t h w -> c (b t) h w")
+        prefix_frames = 0
+        prefix_latent = None
+        if fake_image_latent is not None:
+            prefix_latent = fake_image_latent.to(device=temp_source_latent.device, dtype=temp_source_latent.dtype)
+            prefix_frames = prefix_latent.shape[1]
+            if prefix_frames > history_window_size:
+                raise ValueError(
+                    f"Condition history is longer than history window: {prefix_frames} > {history_window_size}"
+                )
         zero_padding_source = torch.zeros(
             temp_source_latent.shape[0],
-            history_window_size,
+            history_window_size - prefix_frames,
             temp_source_latent.shape[2],
             temp_source_latent.shape[3],
             device=temp_source_latent.device,
             dtype=temp_source_latent.dtype,
         )
-        continue_source_latent = torch.cat([zero_padding_source, temp_source_latent], dim=1)
+        source_latent_parts = [zero_padding_source]
+        if prefix_latent is not None:
+            source_latent_parts.append(prefix_latent)
+        source_latent_parts.append(temp_source_latent)
+        continue_source_latent = torch.cat(source_latent_parts, dim=1)
 
         temp_vae_latent = rearrange(vae_latent, "b c t h w -> c (b t) h w")
         zero_padding_vae = torch.zeros(
@@ -194,7 +242,7 @@ class BucketedFeatureDataset(Dataset):
         choice_idx = torch.randint(
             0, total_sections, (1,), generator=torch.Generator().manual_seed(sample_seed)
         ).item()
-        if choice_idx == 0 and x0_latent is not None:
+        if choice_idx == 0 and x0_latent is not None and image_latent is None:
             x0_latent = torch.zeros_like(x0_latent)
 
         start_indice = choice_idx * latent_window_size
@@ -214,8 +262,11 @@ class BucketedFeatureDataset(Dataset):
 
             x0_latent_2 = None
             if self.is_keep_x0:
-                x0_latent_2 = source_latent[0, :, :1, :, :].clone()
-                if choice_idx_2 == 0:
+                if image_latent is not None:
+                    x0_latent_2 = image_latent.clone()
+                else:
+                    x0_latent_2 = source_latent[0, :, :1, :, :].clone()
+                if choice_idx_2 == 0 and image_latent is None:
                     x0_latent_2 = torch.zeros_like(x0_latent_2)
 
             start_indice_2 = choice_idx_2 * latent_window_size
@@ -243,12 +294,18 @@ class BucketedFeatureDataset(Dataset):
                     gan_sample = self.gan_samples[idx]
                     gan_feature = torch.load(gan_sample["file_path"], map_location="cpu", weights_only=False)
                     if self.is_use_gt_history:
+                        source_image_latent = self._get_optional_feature_latent(gan_feature, "image_latents")
+                        source_fake_image_latent = self._get_optional_feature_latent(
+                            gan_feature, "fake_image_latents"
+                        )
                         (
                             (x0_latent, history_latent, target_latent),
                             (x0_latent_2, history_latent_2, target_latent_2),
                         ) = self.prepare_stage1_latent(
                             gan_feature["vae_latent"],
                             idx,
+                            image_latent=source_image_latent,
+                            fake_image_latent=source_fake_image_latent,
                             return_secondary=self.return_secondary,
                         )
                         output_dict.update(

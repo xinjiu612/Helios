@@ -313,17 +313,17 @@ if __name__ == "__main__":
     local_rank = int(os.environ["LOCAL_RANK"])
     device = torch.cuda.current_device()
     world_size = dist.get_world_size()
-    # `data.json` stores paths like `videos/InteriorGS/xxx.mp4`,
-    # so video_folder must point to sampled_data root.
+
     base_video_path = "/beijing-c/datasets/hxj_video_model/InteriorGS/cropped_data"
-    
     video_paths = [
         "",
     ]
+
     base_output_latent_path = "/beijing-c/datasets/hxj_video_model/InteriorGS/cropped_data"
     output_latent_paths = [
         "latents_short_revise",
     ]
+
     base_csv_paths = [
         "/beijing-c/datasets/hxj_video_model/InteriorGS/cropped_data",
     ]
