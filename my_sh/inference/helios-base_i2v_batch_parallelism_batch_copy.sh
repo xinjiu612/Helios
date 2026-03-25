@@ -1,18 +1,16 @@
 
-export PYTHONPATH=$PWD:$PYTHONPATH
-CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun --nproc_per_node 1 --master_port 29508 infer_helios_batch.py \
+CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node 4 --master_port 29508 infer_helios_batch.py \
+    --enable_parallelism \
+    --cp_backend "ulysses" \
     --base_model_path "/beijing-c/models/BestWishYSH/Helios-Base" \
     --transformer_path "ablation_stage_1_post_revise/merge/step_5000" \
     --sample_type "i2v" \
     --num_frames 99 \
     --fps 24 \
-    --task_dir "eval/intergs/samples/captions_frames_copy" \
+    --task_dir "eval/intergs/samples/captions_frames" \
     --guidance_scale 5.0 \
     --output_folder "eval/intergs/samples/output/revise_base_output_5000"
     
-
-    # --enable_parallelism \
-    # --cp_backend "ulysses" \
     # --use_cfg_zero_star \
     # --use_zero_init \
     # --zero_steps 1 \

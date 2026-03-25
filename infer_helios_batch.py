@@ -619,6 +619,8 @@ def main():
                 print(f"Skipping {output_path} as it already exists.")
                 continue
 
+            print(f"[TASK] {item['image']} -> {output_path}", flush=True)
+
             with torch.no_grad():
                 try:
                     output = pipe(

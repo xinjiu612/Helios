@@ -1,11 +1,11 @@
-output_dir: ablation_stage_2_post
+output_dir: ablation_stage_2_post_revise_no_t2v_drop
 logging_dir: logs
 seed: 46
 
 
 report_to:
   tracker_name: Wan-Train
-  wandb_name: ablation_stage_2_post
+  wandb_name: ablation_stage_2_post_revise_no_t2v_drop
   report_to: wandb
 
 
@@ -23,7 +23,7 @@ data_config:
   caption_dropout_p: 0
   id_token: ""
   instance_data_root:
-    - "/beijing-c/datasets/hxj_video_model/InteriorGS/cropped_data/latents_short"
+    - "/beijing-c/datasets/hxj_video_model/InteriorGS/cropped_data/latents_short_revise"
   # ---- Stage 1 ----
   use_stage1_dataset: true
 
@@ -129,6 +129,7 @@ training_config:
   mode_scale: 1.29
   # ---- Dynamic Shifting Parameters ----
   use_dynamic_shifting: false
+  time_shift_type: "exponential"  # ["exponential", "linear"]
   base_seq_len: 256
   max_seq_len: 4096
   base_shift: 0.5
@@ -160,8 +161,8 @@ training_config:
     # - 2
     # - 1
   is_random_drop: true
+  random_drop_i2v_ratio: 0.4
   random_drop_v2v_ratio: 0.4
-  random_drop_t2v_ratio: 0.4
   # 
   corrupt_model_input: false
   corrupt_mode_model_input: "noise"
@@ -190,8 +191,8 @@ training_config:
   is_train_full_patch_embedding: false
   is_train_lora_patch_embedding: true
   has_multi_term_memory_patch: true
-  is_train_full_clean_patch_embedding: false  # origin is is_train_full_clean_patch_embedding: false
-  is_train_lora_clean_patch_embedding: true   # origin is is_train_lora_clean_patch_embedding: true
+  is_train_full_multi_term_memory_patchg: false  # origin is is_train_full_clean_patch_embedding: false
+  is_train_lora_multi_term_memory_patchg: true   # origin is is_train_lora_clean_patch_embedding: true
   zero_history_timestep: true
   guidance_cross_attn: true
   restrict_self_attn: false

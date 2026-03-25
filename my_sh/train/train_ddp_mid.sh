@@ -110,7 +110,7 @@ echo -e "\033[31mACCELERATE_ARGS: ${ACCELERATE_ARGS}\033[0m"
 accelerate launch \
     $ACCELERATE_ARGS \
     train_helios_val_i2v.py \
-    --config scripts/training/configs/stage_2_post_i2v.yaml \
+    --config my_sh/train/config_new/stage_2_post_i2v.yaml \
     2>&1 | tee ./train.log
 
 # accelerate launch \

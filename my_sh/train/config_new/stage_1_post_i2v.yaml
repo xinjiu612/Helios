@@ -1,11 +1,11 @@
-output_dir: ablation_stage_1_post_revise
+output_dir: ablation_stage_1_post_revise_no_t2v_drop
 logging_dir: logs
 seed: 44
 
 
 report_to:
   tracker_name: Wan-Train
-  wandb_name: ablation_stage_1_post_revise
+  wandb_name: ablation_stage_1_post_revise_no_t2v_drop
   report_to: wandb
 
 
@@ -155,8 +155,8 @@ training_config:
     # - 2
     # - 1
   is_random_drop: true
+  random_drop_i2v_ratio: 0.4
   random_drop_v2v_ratio: 0.4
-  random_drop_t2v_ratio: 0.4
   # 
   corrupt_model_input: false
   corrupt_mode_model_input: "noise"
