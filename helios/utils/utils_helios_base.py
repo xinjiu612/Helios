@@ -1033,7 +1033,7 @@ def prepare_stage2_noise_input(
         latents=latents,
         pyramid_stage_num=pyramid_stage_num,
         stage2_sample_ratios=stage2_sample_ratios,
-    )
+    ) #prepare the pyramid latents
 
     if args.training_config.corrupt_history and latents_history_short is not None:
         latents_history_short, latents_history_mid, latents_history_long = corrupt_history_latents(

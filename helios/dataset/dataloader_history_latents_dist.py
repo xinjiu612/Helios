@@ -52,7 +52,11 @@ class BucketedFeatureDataset(Dataset):
     def _process_folder(self, folder, cache_file):
         if self.force_rebuild or not os.path.exists(cache_file):
             print(f"Building metadata cache for folder: {folder}")
-            folder_samples, folder_buckets = self._build_folder_metadata(folder)
+            folder_samples, folder_buckets = self._build_folder_metadata(folder)  #prepare informations for samples, and make buckets according to the num_frame, height, width 
+            #  folder_buckets = {
+            #     (33, 384, 640): [0, 3, 7],
+            #     (65, 384, 640): [1, 2, 5]
+            # }  0,3,7 means the ids of the samples
 
             print(f"Saving metadata cache for folder: {folder}")
             cached_data = {"samples": folder_samples, "buckets": folder_buckets}
@@ -69,10 +73,10 @@ class BucketedFeatureDataset(Dataset):
             print(f"Loaded {len(folder_samples)} samples from cache: {folder}\n")
 
         sample_idx_offset = len(self.samples)
-        self.samples.extend(folder_samples)
+        self.samples.extend(folder_samples)  # there are many samples
 
         for bucket_key, indices in folder_buckets.items():
-            adjusted_indices = [idx + sample_idx_offset for idx in indices]
+            adjusted_indices = [idx + sample_idx_offset for idx in indices]  # add the offset of samples because there are maybe not only one folder
             self.buckets[bucket_key].extend(adjusted_indices)
 
     def _build_folder_metadata(self, folder):
@@ -125,7 +129,7 @@ class BucketedFeatureDataset(Dataset):
             buckets[bucket_key].append(sample_idx)
             sample_idx += 1
 
-        return samples, buckets
+        return samples, buckets  #samples shape [N, sample_info]   buckets shape [[num_frame, height, width],[num_frame, height, width],...]
 
     def set_epoch(self, epoch):
         self._epoch = epoch
@@ -369,6 +373,22 @@ class BucketedSampler(Sampler):
                 dataset_groups[dataset_name].append(idx)
             self.dataset_buckets[bucket_key] = dataset_groups
 
+        # {
+        #     bucket_key: {
+        #         dataset_name: [sample_idx1, sample_idx2, ...]
+        #     }
+        # }
+        # {
+        #     (33, 384, 640): {
+        #         "data_a": [0, 5, 8],
+        #         "data_b": [20, 21]
+        #     },
+        #     (65, 384, 640): {
+        #         "data_a": [2, 7],
+        #         "data_b": [30]
+        #     }
+        # }
+
     def set_epoch(self, epoch):
         self._epoch = epoch
 
@@ -404,6 +424,7 @@ class BucketedSampler(Sampler):
         return sp_group_indices.tolist()
 
     def _apply_global_ratio_sampling(self):
+        # fisrt divide to the datasets, bucket, indices
         if not self.dataset_sampling_ratios:
             return
 
@@ -414,6 +435,13 @@ class BucketedSampler(Sampler):
                     dataset_sample_map[dataset_name] = {"indices": [], "buckets": []}
                 dataset_sample_map[dataset_name]["indices"].extend(indices)
                 dataset_sample_map[dataset_name]["buckets"].extend([bucket_key] * len(indices))
+
+        # dataset_sample_map = {
+        #     dataset_name: {
+        #         "indices": [...所有这个 dataset 的样本索引...],
+        #         "buckets": [...每个索引对应的 bucket_key...]
+        #     }
+        # }
 
         total_samples = sum(len(info["indices"]) for info in dataset_sample_map.values())
         total_ratio = sum(self.dataset_sampling_ratios.values())
@@ -450,6 +478,7 @@ class BucketedSampler(Sampler):
         new_dataset_buckets = {}
         for bucket_key in self.dataset_buckets.keys():
             new_dataset_buckets[bucket_key] = {}
+        # then recover to the bucket_key, datasets, bucket, indices
 
         for dataset_name, info in sampled_dataset_map.items():
             indices = info["indices"]
@@ -473,6 +502,14 @@ class BucketedSampler(Sampler):
         bucket_iterators = {}
         bucket_batches = {}
 
+
+        # self.dataset_buckets：
+        # {
+        #     (33, 384, 640): {
+        #         "data_a": [0, 5, 8],
+        #         "data_b": [20, 21]
+        #     }
+        # }
         for bucket_key, dataset_groups in self.dataset_buckets.items():
             balanced_indices = self._create_balanced_indices(dataset_groups)
 
@@ -486,7 +523,7 @@ class BucketedSampler(Sampler):
 
             batches = []
             for i in range(0, len(sp_group_indices), self.batch_size):
-                batch = sp_group_indices[i : i + self.batch_size]
+                batch = sp_group_indices[i : i + self.batch_size] # batches = [[7, 3], [11, 20]]
                 if len(batch) == self.batch_size or not self.drop_last:
                     batches.append(batch)
 
