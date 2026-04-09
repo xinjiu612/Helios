@@ -4,10 +4,10 @@ import torch
 
 from .utils_base import apply_schedule_shift
 
-
+#add the history error according to the same resolution and diffusion timesteps
 def apply_error_injection(
     args,
-    recycle_vars,
+    recycle_vars, #latent_error_buffer[(h, w)][grid_idx],y_error_buffer[(h, w)][grid_idx]
     model_input,
     noise,
     timesteps,
@@ -287,6 +287,7 @@ def get_timesteps(
 def get_timestep_grid(args, recycle_vars, timesteps, noise):
     """Get the grid index for a given timesteps."""
     _, _, _, h, w = noise.shape
+    #recycle_vars.latent_error_buffer[(h, w)][grid_idx]
 
     # Handle different timesteps formats (scalar tensor, tensor with batch dim, etc.)
     if isinstance(timesteps, torch.Tensor):
@@ -310,6 +311,7 @@ def get_timestep_grid(args, recycle_vars, timesteps, noise):
             temp_inferece_timesteps = temp_inferece_timesteps.squeeze(-1)
     else:
         temp_inferece_timesteps = recycle_vars.recycle_inferece_timesteps
+        #use a fixed timesteps
 
     # Ensure timesteps is within valid range and calculate grid index
     timestep_vals = torch.clamp(timestep_vals, 0, 999)
@@ -603,6 +605,7 @@ def process_and_update_error_buffers(
     noisy_model_input,
     use_clean_input,
 ):
+# the true predict error is at the final noise or begin x0 but not the velocity error (which is caculated as model_pred - target)  (i think it is just as the current velocity error vs rollout error(postion error) )
     x_0_pred = step_recycle(
         noise_scheduler_copy,
         model_pred,

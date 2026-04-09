@@ -1,11 +1,11 @@
-output_dir: ablation_stage_2_post_revise_no_t2v_drop
+output_dir: ablation_stage_2_post_revise_no_t2v_drop_yaw_revise
 logging_dir: logs
 seed: 46
 
 
 report_to:
   tracker_name: Wan-Train
-  wandb_name: ablation_stage_2_post_revise_no_t2v_drop
+  wandb_name: ablation_stage_2_post_revise_no_t2v_drop_yaw_revise
   report_to: wandb
 
 
@@ -23,7 +23,7 @@ data_config:
   caption_dropout_p: 0
   id_token: ""
   instance_data_root:
-    - "/beijing-c/datasets/hxj_video_model/InteriorGS/cropped_data/latents_short_revise"
+    - "/beijing-c/datasets/hxj_video_model/InteriorGS/yaw_revise/latents_short_revise"
   # ---- Stage 1 ----
   use_stage1_dataset: true
 
@@ -66,7 +66,8 @@ validation_config:
   validation_width: 640
   validation_max_num_frames: 99
   validation_prompts:
-    - "The camera glides forward across a smooth, tiled floor within a narrow kitchen corridor lined with cabinetry. It approaches a large, rectangular stainless steel refrigerator standing against the far wall, positioned between a countertop and a doorway. The camera moves directly toward the appliance, passes closely by its right side, and continues its trajectory into the adjacent space."
+    # - "The camera glides forward across a smooth, tiled floor within a narrow kitchen corridor lined with cabinetry. It approaches a large, rectangular stainless steel refrigerator standing against the far wall, positioned between a countertop and a doorway. The camera moves directly toward the appliance, passes closely by its right side, and continues its trajectory into the adjacent space."
+    - "A spacious dining area features rows of wooden tables and chairs set upon grey stone tiles, with a large window covered by a dark grid structure at the far end. The target is a specific table located at the rear of the room, distinguished by its white surface and position directly beneath the window. The camera moves to the rear table with the white surface."
     # - "The camera moves forward across a smooth, flat floor surface approaching a rectangular wooden table positioned in the center of the room. The table features a sturdy, flat top with visible grain patterns and is supported by four straight legs anchored to the ground. As the camera glides closer, it passes directly over the open space between the floor and the table surface, continuing its steady trajectory until it reaches the immediate vicinity of the furniture. The movement concludes with the camera positioned just in front of the table, maintaining a consistent height relative to the surrounding floor plane."
     # - "The camera moves steadily forward across a flat concrete surface, approaching a solid wooden door set within a gray brick wall. A rectangular metal handle is mounted on the right side of the door, which is framed by a simple white trim. The camera continues its straight path until it reaches the threshold, passing directly in front of the closed entrance without deviation."
     # - "The camera moves steadily forward across a flat concrete floor, approaching a closed wooden door set within a light-colored wall. A small rectangular window is visible near the top of the door, and a metal handle is mounted on the right side at waist height. The camera glides directly toward the entrance, passing beneath the door frame to continue its path into the adjacent interior space."
@@ -77,7 +78,8 @@ validation_config:
     # - "Several giant wooly mammoths approach treading through a snowy meadow, their long wooly fur lightly blows in the wind as they walk, snow covered trees and dramatic snow capped mountains in the distance, mid afternoon light with wispy clouds and a sun high in the distance creates a warm glow, the low camera view is stunning capturing the large furry mammal with beautiful photography, depth of field."
     # - "A movie trailer featuring the adventures of the 30 year old space man wearing a red wool knitted motorcycle helmet, blue sky, salt desert, cinematic style, shot on 35mm film, vivid colors."
   validation_images:
-    - "/beijing-c/datasets/hxj_video_model/InteriorGS/sampled_data/validation/first_frames/0001_839920_1_2_2-3.jpg"
+    # - "/beijing-c/datasets/hxj_video_model/InteriorGS/sampled_data/validation/first_frames/0001_839920_1_2_2-3.jpg"
+      - "/beijing-c/datasets/hxj_video_model/InteriorGS/validate/samples/0001_839920_1_2_2-3.jpg"
     # - "/beijing-c/datasets/hxj_video_model/InteriorGS/sampled_data/validation/first_frames/0003_839989_3_3_3-3.jpg"
     # - "/beijing-c/datasets/hxj_video_model/InteriorGS/sampled_data/validation/first_frames/0003_839989_4_2_2-4.jpg"
     # - "/beijing-c/datasets/hxj_video_model/InteriorGS/sampled_data/validation/first_frames/0066_839900_10_3_3-1.jpg"

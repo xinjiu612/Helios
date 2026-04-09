@@ -29,16 +29,14 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,garbage_collection_thre
 ## NCCL
 #################################################################
 export NCCL_IB_GID_INDEX=3
-if [ ! -z "${ARNOLD_RDMA_DEVICE}" ]; then
-    export NCCL_IB_HCA=$ARNOLD_RDMA_DEVICE
-fi
+export NCCL_IB_HCA=$ARNOLD_RDMA_DEVICE
 export NCCL_SOCKET_IFNAME=eth0
 export NCCL_SOCKET_TIMEOUT=3600000
 
-export NCCL_DEBUG=WARN
+export NCCL_DEBUG=WARN  # disable the verbose NCCL logs
 export NCCL_P2P_DISABLE=0
-export NCCL_IB_DISABLE=0
-export NCCL_SHM_DISABLE=0
+export NCCL_IB_DISABLE=0  # was 1
+export NCCL_SHM_DISABLE=0  # was 1
 export NCCL_P2P_LEVEL=NVL
 
 export NCCL_PXN_DISABLE=0
@@ -71,10 +69,8 @@ export NCCL_IB_TIMEOUT=22
 # echo -e "\033[31mDISTRIBUTED_ARGS: ${DISTRIBUTED_ARGS}\033[0m"
 
 #################################################################
-## ACCELERATE CONFIG (supports PAI-DLC / Arnold / standalone)
+## ACCELERATE CONFIG
 #################################################################
-# PAI-DLC sets: MASTER_ADDR, MASTER_PORT, WORLD_SIZE, RANK
-# Arnold  sets: ARNOLD_WORKER_0_HOST, METIS_WORKER_0_PORT, ARNOLD_WORKER_NUM, ARNOLD_ID
 MASTER_ADDR="${MASTER_ADDR:-${ARNOLD_WORKER_0_HOST:-127.0.0.1}}"
 
 if [ -z "${MASTER_PORT}" ]; then
@@ -86,24 +82,16 @@ if [ -z "${MASTER_PORT}" ]; then
     fi
 fi
 
-NUM_MACHINES="${NUM_MACHINES:-${WORLD_SIZE:-${ARNOLD_WORKER_NUM:-1}}}"
-MACHINE_RANK="${MACHINE_RANK:-${RANK:-${ARNOLD_ID:-0}}}"
+NUM_MACHINES="${NUM_MACHINES:-${ARNOLD_WORKER_NUM:-1}}"
+MACHINE_RANK="${MACHINE_RANK:-${ARNOLD_ID:-0}}"
 
 if [ ! -z "${CUDA_VISIBLE_DEVICES}" ]; then
     clean_cuda_visible_devices=$(echo "${CUDA_VISIBLE_DEVICES}" | tr -d ' ')
     NUM_PROCESSES_PER_MACHINE=$(echo "${clean_cuda_visible_devices}" | awk -F',' '{print NF}')
-elif [ ! -z "${NPROC_PER_NODE}" ]; then
-    NUM_PROCESSES_PER_MACHINE="${NPROC_PER_NODE}"
-elif [ ! -z "${ARNOLD_WORKER_GPU}" ]; then
-    NUM_PROCESSES_PER_MACHINE="${ARNOLD_WORKER_GPU}"
 else
-    NUM_PROCESSES_PER_MACHINE=$(nvidia-smi -L 2>/dev/null | wc -l)
-    if [ "${NUM_PROCESSES_PER_MACHINE}" -eq 0 ]; then
-        NUM_PROCESSES_PER_MACHINE=1
-    fi
+    NUM_PROCESSES_PER_MACHINE="${NUM_PROCESSES_PER_MACHINE:-${ARNOLD_WORKER_GPU:-1}}"
 fi
 
-# Override for debugging (uncomment as needed):
 # export CUDA_VISIBLE_DEVICES=0
 # NUM_PROCESSES_PER_MACHINE=1
 # NUM_MACHINES=1

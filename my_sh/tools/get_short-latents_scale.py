@@ -315,19 +315,20 @@ if __name__ == "__main__":
     world_size = dist.get_world_size()
     # `data.json` stores paths like `videos/InteriorGS/xxx.mp4`,
     # so video_folder must point to sampled_data root.
-    base_video_path = "/beijing-c/datasets/hxj_video_model/InteriorGS/yaw_revise"
+    base_video_path = "/beijing-c/datasets/hxj_video_model/SpatialVID/SpatialVID"
     video_paths = [
         "",
     ]
-    base_output_latent_path = "/beijing-c/datasets/hxj_video_model/InteriorGS/yaw_revise"
+
+    base_output_latent_path = "/beijing-c/datasets/hxj_video_model/SpatialVID/SpatialVID"
     output_latent_paths = [
-        "latents_short_revise",
+        "latents_short_turn",
     ]
     base_csv_paths = [
-        "/beijing-c/datasets/hxj_video_model/InteriorGS/yaw_revise",
+        "/beijing-c/datasets/hxj_video_model/SpatialVID/SpatialVID",
     ]
     csv_paths = [
-        "data_filtered_33.json",
+        "helios_data_turn.json",
     ]
 
     resolutions = [640]
