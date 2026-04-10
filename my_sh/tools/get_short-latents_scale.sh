@@ -35,12 +35,12 @@ export NCCL_IB_TIMEOUT=22
 #################################################################
 ## DIST
 #################################################################
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+export CUDA_VISIBLE_DEVICES=1,2,3,4,5,6,7
 MASTER_ADDR=localhost
 MASTER_PORT=12345
 NNODES=1
 NODE_RANK=0
-GPUS_PER_NODE=8
+GPUS_PER_NODE=7
 
 # export CUDA_VISIBLE_DEVICES=1
 # MASTER_PORT=12345

@@ -1,0 +1,1 @@
+MASTER_ADDR=9.36.75.219 MASTER_PORT=29500 NUM_MACHINES=2 MACHINE_RANK=0 bash my_sh/train/train_ddp_base_post.sh

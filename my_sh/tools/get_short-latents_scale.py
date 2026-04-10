@@ -319,16 +319,16 @@ if __name__ == "__main__":
     video_paths = [
         "",
     ]
-
-    base_output_latent_path = "/beijing-c/datasets/hxj_video_model/SpatialVID/SpatialVID"
+    base_output_latent_path = "/world_model_data/SpatialVID"
     output_latent_paths = [
-        "latents_short_turn",
+        "latents_short_straight",
     ]
+    
     base_csv_paths = [
         "/beijing-c/datasets/hxj_video_model/SpatialVID/SpatialVID",
     ]
     csv_paths = [
-        "helios_data_turn.json",
+        "helios_data_straight_24fps.part_002_of_003.json",
     ]
 
     resolutions = [640]
