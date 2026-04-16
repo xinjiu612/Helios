@@ -35,12 +35,15 @@ export NCCL_IB_TIMEOUT=22
 #################################################################
 ## DIST
 #################################################################
-export CUDA_VISIBLE_DEVICES=0
-MASTER_ADDR=localhost
-MASTER_PORT=12347
-NNODES=1
-NODE_RANK=0
-GPUS_PER_NODE=1
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+MASTER_ADDR="${MASTER_ADDR:-localhost}"
+MASTER_PORT="${MASTER_PORT:-12347}"
+NNODES="${NNODES:-1}"
+NODE_RANK="${NODE_RANK:-0}"
+if [ -z "${GPUS_PER_NODE:-}" ]; then
+    clean_cuda_visible_devices=$(echo "${CUDA_VISIBLE_DEVICES}" | tr -d ' ')
+    GPUS_PER_NODE=$(echo "${clean_cuda_visible_devices}" | awk -F',' '{print NF}')
+fi
 
 # export CUDA_VISIBLE_DEVICES=1
 # MASTER_PORT=12345
