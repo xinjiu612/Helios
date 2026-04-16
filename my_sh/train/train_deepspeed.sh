@@ -1,7 +1,6 @@
 #!/bin/bash
 export TRITON_CACHE_DIR=.cache/triton/autotune
-export WANDB_MODE="online"
-export WANDB_API_KEY="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"
+export WANDB_MODE="${WANDB_MODE:-disabled}"
 export TOKENIZERS_PARALLELISM=true
 
 # Optional GPU selection:

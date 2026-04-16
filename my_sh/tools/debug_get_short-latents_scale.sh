@@ -35,12 +35,12 @@ export NCCL_IB_TIMEOUT=22
 #################################################################
 ## DIST
 #################################################################
-export CUDA_VISIBLE_DEVICES=2,3,4,5,6,7
+export CUDA_VISIBLE_DEVICES=0
 MASTER_ADDR=localhost
-MASTER_PORT=12345
+MASTER_PORT=12347
 NNODES=1
 NODE_RANK=0
-GPUS_PER_NODE=6
+GPUS_PER_NODE=1
 
 # export CUDA_VISIBLE_DEVICES=1
 # MASTER_PORT=12345
@@ -63,4 +63,4 @@ echo -e "\033[31mDISTRIBUTED_ARGS: ${DISTRIBUTED_ARGS}\033[0m"
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 torchrun $DISTRIBUTED_ARGS \
-    my_sh/tools/get_short-latents_scale.py "$@"
+    my_sh/tools/debug_get_short-latents_scale.py "$@"

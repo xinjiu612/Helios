@@ -1,8 +1,11 @@
 #!/bin/bash
 export HF_ENDPOINT=https://hf-mirror.com
-export TRITON_CACHE_DIR=.cache/triton/autotune
-export WANDB_MODE="online"
-export WANDB_API_KEY="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"
+# 避免共享工作区里旧 Triton 产物与线上 worker glibc 不匹配（见 GLIBC_2.34 / cuda_utils.so）
+if [ -z "${TRITON_CACHE_DIR:-}" ]; then
+    _h="$(hostname 2>/dev/null | tr -cd 'a-zA-Z0-9_.-' || echo nohost)"
+    export TRITON_CACHE_DIR="${TMPDIR:-/tmp}/triton_autotune_helios_${_h}"
+fi
+export WANDB_MODE="${WANDB_MODE:-disabled}"
 export TOKENIZERS_PARALLELISM=true
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 # Optional GPU selection:
