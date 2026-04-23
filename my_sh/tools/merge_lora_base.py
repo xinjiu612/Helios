@@ -30,7 +30,7 @@ pipe = HeliosPipeline.from_pretrained(
 )
 
 pipe.load_lora_weights(
-    "ablation_stage_1_post_revise/checkpoint-5000/pytorch_lora_weights.safetensors",
+    "ablation_stage_1_spatialvid/checkpoint-7000/pytorch_lora_weights.safetensors",
     adapter_name="default",
 )
 pipe.set_adapters(["default"], adapter_weights=[1.0])
@@ -46,11 +46,11 @@ args.training_config.is_use_gan = False
 load_extra_components(
     args,
     transformer,
-    "ablation_stage_1_post_revise/checkpoint-5000/transformer_partial.pth",
+    "ablation_stage_1_spatialvid/checkpoint-7000/transformer_partial.pth",
 )
 
 pipe.fuse_lora()
 pipe.unload_lora_weights()
 pipe.transformer.save_pretrained(
-    "ablation_stage_1_post_revise/merge/step_5000/transformer"
+    "ablation_stage_1_spatialvid/merge/step_7000/transformer"
 )

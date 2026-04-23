@@ -35,15 +35,12 @@ export NCCL_IB_TIMEOUT=22
 #################################################################
 ## DIST
 #################################################################
-export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-2,3,4,5,6,7}"
-MASTER_ADDR="${MASTER_ADDR:-localhost}"
-MASTER_PORT="${MASTER_PORT:-12345}"
-NNODES="${NNODES:-1}"
-NODE_RANK="${NODE_RANK:-0}"
-if [ -z "${GPUS_PER_NODE:-}" ]; then
-    clean_cuda_visible_devices=$(echo "${CUDA_VISIBLE_DEVICES}" | tr -d ' ')
-    GPUS_PER_NODE=$(echo "${clean_cuda_visible_devices}" | awk -F',' '{print NF}')
-fi
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+MASTER_ADDR=localhost
+MASTER_PORT=12345
+NNODES=1
+NODE_RANK=0
+GPUS_PER_NODE=8
 
 # export CUDA_VISIBLE_DEVICES=1
 # MASTER_PORT=12345
@@ -65,29 +62,5 @@ echo -e "\033[31mDISTRIBUTED_ARGS: ${DISTRIBUTED_ARGS}\033[0m"
 # Add project root to PYTHONPATH to find 'helios' module
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
-BASE_VIDEO_PATH="${BASE_VIDEO_PATH:-/beijing-c/datasets/hxj_video_model/SpatialVID/SpatialVID}"
-BASE_CSV_PATH="${BASE_CSV_PATH:-/beijing-c/datasets/hxj_video_model/SpatialVID/SpatialVID}"
-CSV_PATH="${CSV_PATH:-helios_data_straight_5hz.part_002_of_002.part_002_of_002.json}"
-BASE_OUTPUT_LATENT_PATH="${BASE_OUTPUT_LATENT_PATH:-/world_model_data/SpatialVID/5fps}"
-OUTPUT_LATENT_PATH="${OUTPUT_LATENT_PATH:-latents_short_straight_2}"
-BATCH_SIZE="${BATCH_SIZE:-4}"
-DATALOADER_NUM_WORKERS="${DATALOADER_NUM_WORKERS:-8}"
-DATALOADER_PREFETCH_FACTOR="${DATALOADER_PREFETCH_FACTOR:-2}"
-
-EXTRA_ARGS=()
-if [ "${DISABLE_PERSISTENT_WORKERS:-1}" = "1" ]; then
-    EXTRA_ARGS+=(--disable_persistent_workers)
-fi
-
 torchrun $DISTRIBUTED_ARGS \
-    my_sh/tools/get_short-latents_scale.py \
-    --base_video_path "$BASE_VIDEO_PATH" \
-    --base_csv_path "$BASE_CSV_PATH" \
-    --csv_path "$CSV_PATH" \
-    --base_output_latent_path "$BASE_OUTPUT_LATENT_PATH" \
-    --output_latent_path "$OUTPUT_LATENT_PATH" \
-    --batch_size "$BATCH_SIZE" \
-    --dataloader_num_workers "$DATALOADER_NUM_WORKERS" \
-    --dataloader_prefetch_factor "$DATALOADER_PREFETCH_FACTOR" \
-    "${EXTRA_ARGS[@]}" \
-    "$@"
+    my_sh/tools/get_short-latents_scale_origin.py "$@"

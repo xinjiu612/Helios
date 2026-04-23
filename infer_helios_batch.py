@@ -7,6 +7,7 @@ os.environ["HF_PARALLEL_LOADING_WORKERS"] = "8"
 
 import time
 import argparse
+from argparse import Namespace
 import pandas as pd
 from tqdm import tqdm
 
@@ -53,6 +54,17 @@ def parse_args():
         "--partial_path",
         type=str,
         default=None,
+    )
+    parser.add_argument(
+        "--checkpoint_path",
+        type=str,
+        default=None,
+        help="LoRA checkpoint directory containing pytorch_lora_weights.safetensors and optional transformer_partial.pth.",
+    )
+    parser.add_argument(
+        "--fuse_lora",
+        action="store_true",
+        help="Fuse loaded LoRA weights into the transformer in memory before inference.",
     )
     parser.add_argument("--output_folder", type=str, default="./output_helios")
     parser.add_argument("--enable_compile", action="store_true")
@@ -188,8 +200,52 @@ def parse_args():
     return parser.parse_args()
 
 
+def resolve_checkpoint_paths(args):
+    if args.checkpoint_path is None:
+        return
+
+    lora_path = os.path.join(args.checkpoint_path, "pytorch_lora_weights.safetensors")
+    partial_path = os.path.join(args.checkpoint_path, "transformer_partial.pth")
+
+    if args.lora_path is None:
+        args.lora_path = lora_path
+    if args.partial_path is None and os.path.exists(partial_path):
+        args.partial_path = partial_path
+
+    if not os.path.exists(args.lora_path):
+        raise FileNotFoundError(f"LoRA weights not found: {args.lora_path}")
+
+
+def build_training_config_from_partial(partial_path):
+    training_config = Namespace(
+        is_enable_stage1=False,
+        restrict_self_attn=False,
+        is_amplify_history=False,
+        is_use_gan=False,
+    )
+
+    if partial_path is None or not os.path.exists(partial_path):
+        return training_config
+
+    state_dict = torch.load(partial_path, map_location="cpu")
+    state_keys = state_dict.keys()
+
+    training_config.is_enable_stage1 = any(
+        key.startswith(("patch_short.", "patch_mid.", "patch_long.")) for key in state_keys
+    )
+    training_config.restrict_self_attn = any(
+        lora_key in key for key in state_keys for lora_key in [".q_loras.", ".k_loras.", ".v_loras."]
+    )
+    training_config.is_amplify_history = any("history_key_scale" in key for key in state_keys)
+    training_config.is_use_gan = any(
+        key.startswith("gan_heads.") or key.startswith("gan_final_head.") for key in state_keys
+    )
+    return training_config
+
+
 def main():
     args = parse_args()
+    resolve_checkpoint_paths(args)
 
     assert not (args.enable_low_vram_mode and args.enable_compile), (
         "enable_low_vram_mode and enable_compile cannot be used together."
@@ -292,19 +348,25 @@ def main():
     )
 
     if args.lora_path is not None:
+        print(f"Loading LoRA from: {args.lora_path}")
         pipe.load_lora_weights(args.lora_path, adapter_name="default")
+        print("LoRA loaded.")
         pipe.set_adapters(["default"], adapter_weights=[1.0])
+        if hasattr(pipe, "get_active_adapters"):
+            print(f"Active adapters: {pipe.get_active_adapters()}")
+        else:
+            print("Active adapters set to: ['default']")
 
         if args.partial_path is not None:
-            if not hasattr(args, "training_config"):
-                from argparse import Namespace
-
-                args.training_config = Namespace()
-            args.training_config.is_enable_stage1 = True
-            args.training_config.restrict_self_attn = True
-            args.training_config.is_amplify_history = True
-            args.training_config.is_use_gan = True
+            print(f"Loading extra checkpoint modules from: {args.partial_path}")
+            args.training_config = build_training_config_from_partial(args.partial_path)
             load_extra_components(args, transformer, args.partial_path)
+
+        if args.fuse_lora:
+            print("Fusing LoRA into transformer...")
+            pipe.fuse_lora()
+            pipe.unload_lora_weights()
+            print("LoRA fused and adapter weights unloaded.")
 
     if args.enable_compile:
         torch.backends.cudnn.benchmark = True

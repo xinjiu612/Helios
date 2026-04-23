@@ -1,8 +1,8 @@
 import argparse
 import os
+import tempfile
 import time
 from collections import defaultdict
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 import torch
 import torch.distributed as dist
@@ -92,20 +92,31 @@ def ensure_metadata_cache(
     return cache_file
 
 
-def async_copy_to_cpu(tensor, copy_stream):
-    cpu_tensor = torch.empty_like(tensor, device="cpu", pin_memory=True)
-    with torch.cuda.stream(copy_stream):
-        cpu_tensor.copy_(tensor, non_blocking=True)
-    return cpu_tensor
-
-
-def save_batch_payloads(batch_payloads, copy_event=None, retained_gpu_tensors=None):
-    if copy_event is not None:
-        copy_event.synchronize()
-    del retained_gpu_tensors
-
+def save_batch_payloads(batch_payloads):
     output_paths = []
     for payload in batch_payloads:
+        invalid_tensor_infos = []
+        for key in ("vae_latent", "image_latents", "fake_image_latents", "prompt_embed"):
+            value = payload[key]
+            if torch.is_tensor(value) and (torch.is_floating_point(value) or torch.is_complex(value)):
+                finite_mask = torch.isfinite(value)
+                if not finite_mask.all():
+                    invalid_tensor_infos.append(
+                        {
+                            "key": key,
+                            "nan_count": int(torch.isnan(value).sum().item()),
+                            "inf_count": int(torch.isinf(value).sum().item()),
+                        }
+                    )
+
+        if invalid_tensor_infos:
+            print(
+                f"Skip saving invalid latent file: {payload['output_path']}, "
+                f"issues={invalid_tensor_infos}",
+                flush=True,
+            )
+            continue
+
         temp_to_save = {
             "vae_latent": payload["vae_latent"],
             "image_latents": payload["image_latents"],
@@ -114,9 +125,22 @@ def save_batch_payloads(batch_payloads, copy_event=None, retained_gpu_tensors=No
             "first_frames_image": transforms.ToPILImage()(payload["first_frames_image"]),
             "prompt_raw": payload["prompt_raw"],
         }
-        torch.save(temp_to_save, payload["output_path"])
+        output_dir = os.path.dirname(payload["output_path"]) or "."
+        temp_fd, temp_output_path = tempfile.mkstemp(
+            prefix=".tmp_latent_",
+            suffix=".pt",
+            dir=output_dir,
+        )
+        try:
+            os.close(temp_fd)
+            torch.save(temp_to_save, temp_output_path)
+            os.replace(temp_output_path, payload["output_path"])
+        except Exception:
+            if os.path.exists(temp_output_path):
+                os.remove(temp_output_path)
+            raise
         output_paths.append(payload["output_path"])
-    return output_paths, len(batch_payloads)
+    return output_paths, len(output_paths)
 
 
 def expected_latent_filename(sample_info):
@@ -174,29 +198,6 @@ def filter_completed_samples(dataset, output_latent_folder, global_rank):
     return skipped_count
 
 
-def drain_save_futures(save_futures, wait_for_one=False):
-    if not save_futures:
-        return [], 0
-
-    if wait_for_one:
-        done, not_done = wait(save_futures, return_when=FIRST_COMPLETED)
-        completed = list(done)
-        remaining = list(not_done)
-    else:
-        completed = [future for future in save_futures if future.done()]
-        remaining = [future for future in save_futures if not future.done()]
-
-    for future in completed:
-        try:
-            output_paths, _ = future.result()
-            for output_path in output_paths:
-                print(f"save latent to: {output_path}")
-        except Exception as exc:
-            print(f"Save task failed: {exc}", flush=True)
-
-    return remaining, len(completed)
-
-
 def main(
     rank,
     world_size,
@@ -206,9 +207,6 @@ def main(
     dataloader_num_workers,
     dataloader_prefetch_factor,
     dataloader_persistent_workers,
-    save_workers,
-    max_pending_saves,
-    sync_save,
     force_rebuild,
     filter_completed,
     gc_interval,
@@ -221,9 +219,6 @@ def main(
     weight_dtype = torch.bfloat16
     device = rank
     seed = 42
-    save_executor = None if sync_save else ThreadPoolExecutor(max_workers=save_workers)
-    save_futures = []
-    copy_stream = None if sync_save else torch.cuda.Stream(device=device)
 
     torch.backends.cudnn.benchmark = True
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -358,7 +353,7 @@ def main(
                 print("skipping entire batch!")
                 if rank == 0:
                     pbar.update(1)
-                    pbar.set_postfix({"batch": idx, "pending_saves": len(save_futures)})
+                    pbar.set_postfix({"batch": idx})
                 idx += 1
                 continue
 
@@ -413,19 +408,10 @@ def main(
                     device=device,
                 )
 
-            if sync_save:
-                vae_latents_cpu = vae_latents.detach().cpu()
-                image_latents_cpu = image_latents.detach().cpu()
-                fake_image_latents_cpu = fake_image_latents.detach().cpu()
-                prompt_embeds_cpu = prompt_embeds.detach().cpu()
-                copy_event = None
-            else:
-                vae_latents_cpu = async_copy_to_cpu(vae_latents.detach(), copy_stream)
-                image_latents_cpu = async_copy_to_cpu(image_latents.detach(), copy_stream)
-                fake_image_latents_cpu = async_copy_to_cpu(fake_image_latents.detach(), copy_stream)
-                prompt_embeds_cpu = async_copy_to_cpu(prompt_embeds.detach(), copy_stream)
-                copy_event = torch.cuda.Event()
-                copy_event.record(copy_stream)
+            vae_latents_cpu = vae_latents.detach().cpu()
+            image_latents_cpu = image_latents.detach().cpu()
+            fake_image_latents_cpu = fake_image_latents.detach().cpu()
+            prompt_embeds_cpu = prompt_embeds.detach().cpu()
             first_frames_images_cpu = batch["first_frames_images"].to(torch.uint8).clone()
 
             batch_payloads = []
@@ -450,32 +436,13 @@ def main(
                     }
                 )
 
-            if sync_save:
-                output_paths, _ = save_batch_payloads(
-                    batch_payloads,
-                    copy_event,
-                    (vae_latents, image_latents, fake_image_latents, prompt_embeds),
-                )
-                for output_path in output_paths:
-                    print(f"save latent to: {output_path}")
-            else:
-                save_futures.append(
-                    save_executor.submit(
-                        save_batch_payloads,
-                        batch_payloads,
-                        copy_event,
-                        (vae_latents, image_latents, fake_image_latents, prompt_embeds),
-                    )
-                )
-                save_futures, _ = drain_save_futures(save_futures)
-
-                if len(save_futures) >= max_pending_saves:
-                    while len(save_futures) >= max_pending_saves:
-                        save_futures, _ = drain_save_futures(save_futures, wait_for_one=True)
+            output_paths, _ = save_batch_payloads(batch_payloads)
+            for output_path in output_paths:
+                print(f"save latent to: {output_path}")
 
             if rank == 0:
                 pbar.update(1)
-                pbar.set_postfix({"batch": idx, "pending_saves": len(save_futures)})
+                pbar.set_postfix({"batch": idx})
 
             del pixel_values
             del prompts
@@ -498,10 +465,6 @@ def main(
                 free_memory()
             idx += 1
     finally:
-        if not sync_save:
-            while save_futures:
-                save_futures, _ = drain_save_futures(save_futures, wait_for_one=True)
-            save_executor.shutdown(wait=True)
         if rank == 0:
             pbar.close()
 
@@ -509,20 +472,13 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script for running model training and data processing.")
     parser.add_argument("--dataloader_num_workers", type=int, default=4, help="Number of workers for data loading")
-    parser.add_argument("--dataloader_prefetch_factor", type=int, default=4, help="Prefetch factor for each dataloader worker")
+    parser.add_argument(
+        "--dataloader_prefetch_factor", type=int, default=4, help="Prefetch factor for each dataloader worker"
+    )
     parser.add_argument("--disable_persistent_workers", action="store_true", help="Disable persistent dataloader workers")
-    parser.add_argument("--save_workers", type=int, default=2, help="Number of background threads used for torch.save")
-    parser.add_argument(
-        "--max_pending_saves",
-        type=int,
-        default=128,
-        help="Maximum number of outstanding async save jobs before applying backpressure",
-    )
-    parser.add_argument(
-        "--sync_save",
-        action="store_true",
-        help="Save latents synchronously on the main thread instead of using async save workers",
-    )
+    parser.add_argument("--save_workers", type=int, default=2, help=argparse.SUPPRESS)
+    parser.add_argument("--max_pending_saves", type=int, default=128, help=argparse.SUPPRESS)
+    parser.add_argument("--sync_save", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--force_rebuild",
         action="store_true",
@@ -624,9 +580,6 @@ if __name__ == "__main__":
             dataloader_num_workers=args.dataloader_num_workers,
             dataloader_prefetch_factor=args.dataloader_prefetch_factor,
             dataloader_persistent_workers=not args.disable_persistent_workers,
-            save_workers=args.save_workers,
-            max_pending_saves=args.max_pending_saves,
-            sync_save=args.sync_save,
             force_rebuild=args.force_rebuild,
             filter_completed=not args.disable_completed_filter,
             gc_interval=args.gc_interval,
