@@ -84,6 +84,7 @@ class BucketedFeatureDataset(Dataset):
         samples = []
         buckets = defaultdict(list)
         sample_idx = 0
+        skipped_invalid_filenames = 0
 
         print(f"Processing {len(feature_files)} files in {folder}...")
 
@@ -95,10 +96,23 @@ class BucketedFeatureDataset(Dataset):
 
             # Parse filename
             parts = feature_file.split("_")
+            if len(parts) < 4:
+                skipped_invalid_filenames += 1
+                print(f"Skipping invalid feature filename: {feature_file}")
+                continue
+
+            frame_token = parts[-3]
+            height_token = parts[-2]
+            width_token = parts[-1].replace(".pt", "")
+            if not (frame_token.isdigit() and height_token.isdigit() and width_token.isdigit()):
+                skipped_invalid_filenames += 1
+                print(f"Skipping invalid feature filename: {feature_file}")
+                continue
+
             uttid = "_".join(parts[:-3])
-            num_frame = int(parts[-3])
-            height = int(parts[-2])
-            width = int(parts[-1].replace(".pt", ""))
+            num_frame = int(frame_token)
+            height = int(height_token)
+            width = int(width_token)
 
             # 5hz lw3 latents use 9-frame raw chunks, so 27-frame buckets are valid.
             if num_frame < 27:
@@ -128,6 +142,9 @@ class BucketedFeatureDataset(Dataset):
             samples.append(sample_info)
             buckets[bucket_key].append(sample_idx)
             sample_idx += 1
+
+        if skipped_invalid_filenames > 0:
+            print(f"Skipped {skipped_invalid_filenames} invalid feature filenames in {folder}")
 
         return samples, buckets  #samples shape [N, sample_info]   buckets shape [[num_frame, height, width],[num_frame, height, width],...]
 
