@@ -1620,8 +1620,21 @@ class HeliosTransformer3DModel(
         from diffusers.utils import WEIGHTS_NAME
 
         if os.path.exists(pretrained_model_path):
+            root_pretrained_model_path = pretrained_model_path
             if subfolder is not None:
-                pretrained_model_path = os.path.join(pretrained_model_path, subfolder)
+                candidate_pretrained_model_path = os.path.join(pretrained_model_path, subfolder)
+                candidate_config_file = os.path.join(candidate_pretrained_model_path, "config.json")
+                root_config_file = os.path.join(root_pretrained_model_path, "config.json")
+
+                if os.path.isdir(candidate_pretrained_model_path) or os.path.isfile(candidate_config_file):
+                    pretrained_model_path = candidate_pretrained_model_path
+                elif os.path.isfile(root_config_file):
+                    print(
+                        f"Subfolder '{subfolder}' not found under {root_pretrained_model_path}, "
+                        f"falling back to root checkpoint directory."
+                    )
+                else:
+                    pretrained_model_path = candidate_pretrained_model_path
         else:
             print(f"Downloading from Hugging Face Hub: {pretrained_model_path}")
             cache_dir = snapshot_download(
